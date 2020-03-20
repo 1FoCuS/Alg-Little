@@ -1,102 +1,129 @@
+#include "littlesolver.h"
+#include "matrix.h"
 #include <iostream>
-#include <vector>
-#include <algorithm>
-#include <cfloat>
-#include <numeric>
-#include <iomanip>
-
-#define DEBUG
-constexpr double INF = DBL_MAX;
+#include <cmath>
 
 using namespace std;
-template <typename T>
-using Matrix = std::vector<std::vector<T>>;
+constexpr int INF = 99;
 
-template<typename T>
-ostream& operator<<(ostream& ss, const vector<T>& m)
-{
-	for(const auto& a:m)
-	{
-		ss << std::setprecision(2) <<  (a==INF ? -1 : a) << "\t";
-	}
-	return ss;
-}
-template<typename T>
-ostream& operator<<(ostream& ss, const Matrix<T>& m)
-{
-	for(const auto& a:m)
-	{
-		ss << a << std::endl;
-	}
-	return ss;
-}
-// ==========================================================================================================
-class LittleSolver
+class LittleWorker
 {
 public:
-	LittleSolver() 
-	{
-		matrix = {
-			{	INF,	20,		18,		12,		8	},
-			{	5,		INF,	14,		7,		11	},
-			{	12,		18,		INF, 	6, 		11	},
-			{	11, 	17,		11,		INF,	12	},
-			{	5,		5,		5,		5,		INF	}
-		};
-#ifdef DEBUG
-	std::cout << matrix << std::endl;
-#endif // DEBUG
-	}
-	
-	double prepare()
-	{
-		std::vector<double> minRow(matrix.size(), INF), minColumn(matrix.size(), INF);
+    explicit LittleWorker(const Matrix<double> &m);
 
-		for( std::size_t i=0; i<matrix.size(); ++i)
-		{
-			for(std::size_t j=0; j<matrix.size(); ++j)
-			{
-				minRow[i] = std::min(matrix[i][j], minRow[i]);
-			}
+    std::list<size_t> getSolution() const;
+    LittleSolver::arclist getLastStep() const;
+    LittleSolver::arclist getBestStep() const;
+    double getRecord() const;
 
-			for(std::size_t j=0; j<matrix.size(); ++j)
-			{
-				if(matrix[i][j] < INF) matrix[i][j] -= minRow[i];
-				minColumn[j] = std::min(matrix[i][j], minColumn[j]);
-			}
-		}
-		for( std::size_t j=0; j<matrix.size(); ++j)
-		{
-			for(std::size_t i=0; i<matrix.size(); ++i)
-			{
-				if (matrix[i][j] < INF) matrix[i][j] -= minColumn[j];
-			}
-		}
+    void process();
 
-		subtractSum = std::accumulate(minRow.begin(), minRow.end(), subtractSum);
-		subtractSum = std::accumulate(minColumn.begin(), minColumn.end(), subtractSum);
-
-#ifdef DEBUG
-	std::cout << "After subtracting:" << std::endl; 
-	std::cout << matrix << std::endl;
-#endif // DEBUG
-
-    	return subtractSum;
-
-	}
 private:
-	Matrix<double> matrix;
-	double subtractSum = 0; 		// сумма всех вычтенных значений
-	double low_borderline = 0; 		// нижняя граница
+    std::unique_ptr<LittleSolver> _solver;
 };
-// ==========================================================================================================
 
-
-
-
-// @todo part 2
-int main() 
+void habr_init(Matrix<double>& matrix)
 {
-	LittleSolver solver;
-	solver.prepare();
+    matrix.item(0,0) = INF;
+    matrix.item(0,1) = 20;
+    matrix.item(0,2) = 18;
+    matrix.item(0,3) = 12;
+    matrix.item(0,4) = 8;
+
+    matrix.item(1,0) = 5;
+    matrix.item(1,1) = INF;
+    matrix.item(1,2) = 14;
+    matrix.item(1,3) = 7;
+    matrix.item(1,4) = 11;
+
+    matrix.item(2,0) = 12;
+    matrix.item(2,1) = 18;
+    matrix.item(2,2) = INF;
+    matrix.item(2,3) = 6;
+    matrix.item(2,4) = 11;
+
+    matrix.item(3,0) = 11;
+    matrix.item(3,1) = 17;
+    matrix.item(3,2) = 11;
+    matrix.item(3,3) = INF;
+    matrix.item(3,4) = 12;
+
+    matrix.item(4,0) = 5;
+    matrix.item(4,1) = 5;
+    matrix.item(4,2) = 5;
+    matrix.item(4,3) = 5;
+    matrix.item(4,4) = INF;
+}
+void test_init(Matrix<double>& matrix)
+{
+    matrix.item(0,0) = INF;
+    matrix.item(0,1) = sqrt(800);
+    matrix.item(0,2) = sqrt(2900);
+    matrix.item(0,3) = sqrt(1700);
+    matrix.item(0,4) = 10;
+
+    matrix.item(1,0) = sqrt(800);
+    matrix.item(1,1) = INF;
+    matrix.item(1,2) = sqrt(1000);
+    matrix.item(1,3) = 20;
+    matrix.item(1,4) = sqrt(200);
+
+    matrix.item(2,0) = sqrt(2900);
+    matrix.item(2,1) = sqrt(1000);
+    matrix.item(2,2) = INF;
+    matrix.item(2,3) = sqrt(200);
+    matrix.item(2,4) = sqrt(2000);
+
+    matrix.item(3,0) = sqrt(1700);
+    matrix.item(3,1) = 20;
+    matrix.item(3,2) = sqrt(200);
+    matrix.item(3,3) = INF;
+    matrix.item(3,4) = sqrt(1000);
+
+    matrix.item(4,0) = 10;
+    matrix.item(4,1) = sqrt(200);
+    matrix.item(4,2) = sqrt(2000);
+    matrix.item(4,3) = sqrt(1000);
+    matrix.item(4,4) = INF;
+}
+int main()
+{
+    Matrix<double> matrix(5);
+
+//    habr_init(matrix);
+    test_init(matrix);
+    matrix.print();
+
+    LittleSolver worker(matrix);
+    worker.solve();
+
+    auto res = worker.getSolution();
+
+    while (!res.empty())
+    {
+        std::cout << res.front() << std::endl;
+        res.pop_front();
+    }
+
+}
+
+
+LittleWorker::LittleWorker(const Matrix<double> &m)
+    : _solver(std::make_unique<LittleSolver>(m)) {
+}
+
+std::list<size_t> LittleWorker::getSolution() const {
+    return _solver->getSolution();
+}
+
+double LittleWorker::getRecord() const {
+    return _solver->getRecord();
+}
+
+LittleSolver::arclist LittleWorker::getLastStep() const {
+    return _solver->getLastStep();
+}
+
+LittleSolver::arclist LittleWorker::getBestStep() const {
+    return _solver->getBestStep();
 }
