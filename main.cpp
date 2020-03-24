@@ -1,26 +1,11 @@
-#include "littlesolver.h"
-#include "matrix.h"
+#include "littleworker.h"
 #include <iostream>
 #include <cmath>
 
 using namespace std;
 constexpr int INF = 99;
 
-class LittleWorker
-{
-public:
-    explicit LittleWorker(const Matrix<double> &m);
-
-    std::list<size_t> getSolution() const;
-    LittleSolver::arclist getLastStep() const;
-    LittleSolver::arclist getBestStep() const;
-    double getRecord() const;
-
-    void process();
-
-private:
-    std::unique_ptr<LittleSolver> _solver;
-};
+Matrix<double> create_matrix(const std::vector<std::pair<double, double>>&);
 
 void habr_init(Matrix<double>& matrix)
 {
@@ -86,12 +71,15 @@ void test_init(Matrix<double>& matrix)
     matrix.item(4,3) = sqrt(1000);
     matrix.item(4,4) = INF;
 }
+
 int main()
 {
-    Matrix<double> matrix(5);
+//    Matrix<double> matrix(5);
 
+    auto matrix = create_matrix({{1,1}, {2,2} , {3,3}, {4,4}, {5,5} });
 //    habr_init(matrix);
-    test_init(matrix);
+//    test_init(matrix);
+
     matrix.print();
 
     LittleSolver worker(matrix);
@@ -99,31 +87,29 @@ int main()
 
     auto res = worker.getSolution();
 
+    std::cout << "result: ";
     while (!res.empty())
     {
-        std::cout << res.front() << std::endl;
+        std::cout << res.front() << " ";
         res.pop_front();
     }
-
+    std::cout << std::endl;
 }
 
+Matrix<double> create_matrix(const std::vector<std::pair<double, double>>& points)
+{
+    Matrix<double> matrix(points.size());
 
-LittleWorker::LittleWorker(const Matrix<double> &m)
-    : _solver(std::make_unique<LittleSolver>(m)) {
-}
+    for(std::size_t i = 0; i<points.size(); ++i)
+    {
+        for(std::size_t j = 0; j<points.size(); ++j)
+        {
+            if (i==j) continue;
+            const auto x = std::pow(points[i].first - points[j].first, 2);
+            const auto y = std::pow(points[i].second - points[j].second, 2);
+            matrix(i,j) = sqrt(x + y);
+        }
+    }
 
-std::list<size_t> LittleWorker::getSolution() const {
-    return _solver->getSolution();
-}
-
-double LittleWorker::getRecord() const {
-    return _solver->getRecord();
-}
-
-LittleSolver::arclist LittleWorker::getLastStep() const {
-    return _solver->getLastStep();
-}
-
-LittleSolver::arclist LittleWorker::getBestStep() const {
-    return _solver->getBestStep();
+    return matrix;
 }
